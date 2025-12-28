@@ -1,0 +1,16 @@
+{
+  "Cells": {
+    "A1": {
+      "StringForm": "hello"
+    },
+    "A2": {
+      "StringForm": "5"
+    },
+    "A3": {
+      "StringForm": "4"
+    },
+    "A4": {
+      "StringForm": "=A2\u002BA3"
+    }
+  }
+}

@@ -1,0 +1,275 @@
+﻿@namespace GUI.Components.Pages
+@page "/"
+@page "/sheets"
+@rendermode InteractiveServer
+@inherits LayoutComponentBase
+@inject IJSRuntime JsRuntime
+
+
+
+
+<PageTitle>Spreadsheet</PageTitle>
+
+<div class="toolbar">
+    <!-- Save and Load -->
+    <div class="toolbar-left">
+        <button class="toolbar-btn" @onclick="SaveFile">💾 Save</button>
+        <label class="toolbar-btn upload-btn">
+            📁 Load
+            <InputFile type="file" OnChange="HandleFileChooser" style="display:none;"/>
+        </label>
+        <button class="toolbar-btn btn-clear" @onclick="ClearCheck">🗑 Clear</button>
+    </div>
+
+    <!-- Cell, Contents, Value  Boxes-->
+    <div class="toolbar-right">
+        <span class="cell-label">Cell:</span>
+        <input class="cell-input" @bind="_selectedCell" readonly/>
+
+        <span class="cell-label">Contents:</span>
+        <input class="contents-input" value="@_currentCellContent" @oninput="ContentsInput" @onchange="ContentsChanged"
+               @ref="_contentInputBoxReference"/>
+
+        <span class="cell-label">Value:</span>
+        <input class="value-input" value="@(_spreadsheet[_selectedCell] ?? "")" readonly/>
+    </div>
+</div>
+
+<!-- Showing Error if Applicable! -->
+@if (_showError)
+{
+    <div class="error-box text-center">
+        <span>@ErrorMessage</span>
+        <br/>
+        <button class="btn btn-danger" @onclick="DismissError">OK</button>
+    </div>
+}
+
+@if (_clearWarning)
+{
+    <div class="error-box text-center">
+        <span>Are you sure you want to clear the spreadsheet? </span>
+        <br/>
+        <button class="btn btn-danger" @onclick="ConfirmClear">Yes</button>
+        <button class="btn btn-danger" @onclick="CancelClear">No</button>
+    </div>
+}
+
+
+<div>
+    <div class="table-container">
+        <div class="scrollable">
+            <table class="table table-bordered">
+                <thead>
+                <tr class="fixed-header">
+                    <th scope="col">&nbsp;</th>
+                    @for (int col = 0; col < Cols; col++)
+                    {
+                        <th scope="col">@ColumnName(col)</th>
+                    }
+                </tr>
+                </thead>
+
+                <tbody>
+
+
+                @for (int row = 0; row < Rows; row++)
+                {
+                    <tr style="padding:0 !important;">
+                        <th style="padding:0 !important;" scope="row" class="fixed-column">@(row + 1)</th>
+                        @for (int col = 0; col < Cols; col++)
+                        {
+                            int r = row;
+                            int c = col;
+
+                            <td @onclick="() => CellClicked(r, c)"
+                                class="@GetCellClass(r, c)"
+                                style="padding:0 ;">
+                                <p class="spreadcell">@CellsBackingStore[r, c]</p>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .spreadcell {
+        width: 150px;
+        height: 40px;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .fixed-header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: #ffffff !important;
+    }
+
+    .fixed-column {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background-color: #ffffff !important;
+    }
+
+    .scrollable {
+        white-space: nowrap;
+        width: 1000px;
+        height: 500px;
+        margin: -1px;
+    }
+
+    /* Annoying css stuff to make the error box look good */
+    .error-box {
+        position: absolute;
+        top: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: white;
+        border: 1px solid #dc3545;
+        border-radius: 8px;
+        padding: 15px 25px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        z-index: 2000;
+        width: fit-content;
+    }
+
+    /* toolbar */
+    .toolbar {
+        background-color: #dbe5f1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        border-bottom: 1px solid #ccc;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        gap: 15px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-grow: 1;
+    }
+
+    .toolbar-btn {
+        background-color: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .toolbar-btn:hover {
+        background-color: #e2e2e2;
+    }
+
+    .cell-label {
+        font-weight: 600;
+        margin-right: 3px;
+    }
+
+    .cell-input,
+    .contents-input,
+    .value-input {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 4px 6px;
+        font-size: 0.9rem;
+    }
+
+    .contents-input {
+        width: 300px;
+    }
+
+    .cell-input {
+        width: 60px;
+    }
+
+    .value-input {
+        width: 120px;
+    }
+
+    .cell-input:focus,
+    .contents-input:focus,
+    .value-input:focus {
+        outline: none;
+        box-shadow: 0 0 2px rgba(0, 123, 255, 0.5);
+        border-color: #007bff;
+    }
+
+    .cell-selected {
+        outline: 2px solid #4a90e2;
+        outline-offset: -2px;
+    }
+
+    .cell-referenced {
+        background-color: #ffe4cc;
+        outline: 2px solid #ff9800;
+        outline-offset: -2px;
+    }
+</style>
+
+
+<script type="text/javascript">
+    function focusElement(id) {
+        console.log(`looking for: ${id}`);
+        var element = document.getElementById(id);
+        if (element) {
+            console.log(`focusing element: ${id} ${element}`)
+            element.focus();
+        }
+    }
+
+    window.addKeyPressListener = function (dotNetObject) {
+        console.log("registering key press event handler");
+        document.addEventListener('keydown', function (event) {
+            console.log(`got key: ${event.key}`);
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                event.preventDefault(); // Prevent arrow keys from scrolling
+            }
+            dotNetObject.invokeMethodAsync('HandleKeyPress', event.key);
+        });
+    };
+
+    function downloadFile(fileName, fileContent) {
+        console.log(`download file ${fileName}`);
+        // Create a blob with the file content
+        const blob = new Blob([fileContent], {type: "text/plain"});
+
+        // Create a link element
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+
+        // Append the anchor element to the body
+        document.body.appendChild(a);
+
+        // Click the link to trigger download
+        a.click();
+
+        // Remove the anchor element from the DOM
+        document.body.removeChild(a);
+    }
+
+</script>

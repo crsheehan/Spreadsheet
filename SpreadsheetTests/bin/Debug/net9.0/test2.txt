@@ -1,0 +1,13 @@
+{
+  "Cells": {
+    "A1": {
+      "StringForm": "5"
+    },
+    "B2": {
+      "StringForm": "=A1\u002B5"
+    },
+    "C3": {
+      "StringForm": "=B2\u002BA1"
+    }
+  }
+}
